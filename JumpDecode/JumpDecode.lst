@@ -1,0 +1,208 @@
+ARM GAS  JumpDecode.s 			page 1
+ARM Jump Decoding
+Data Section
+   1              	@ Program 4
+   2              	@ JumpDecode.s
+   3              	@ Jackie Chan
+   4              	@ 09-2024
+   5              	@ CIST 039
+   6              	.PSIZE 50, 100
+   7              	.TITLE		"ARM Jump Decoding"
+   8              	.SBTTL		"Data Section"	
+   9              	
+  10              	.DATA
+  11              	
+  12 0000 4A61636B 	courseSTR:		.ASCIZ	"Jackie Chan\t\t\tCIST 039\n"
+  12      69652043 
+  12      68616E09 
+  12      09094349 
+  12      53542030 
+  13 0018 54686973 	pgmSTR:			.ASCIZ	"This program will decode a subset of ARM instructions\n"
+  13      2070726F 
+  13      6772616D 
+  13      2077696C 
+  13      6C206465 
+  14 004f 41646472 	titleSTR:		.ASCIZ	"Address\t\tM Language\tInstruction"
+  14      65737309 
+  14      094D204C 
+  14      616E6775 
+  14      61676509 
+  15              	
+  16 006f 30782530 	printSTR:		.ASCIZ	"0x%08X\t%08X\t"
+  16      38580925 
+  16      30385809 
+  16      00
+  17 007c 093C252B 	printBranchOff:	.STRING	"\t<%+d>"
+  17      643E00
+  18 0083 257300   	printSTRing:	.STRING	"%s"
+  19              	
+  20              	/* STRINGS for Opcode		*/
+  21 0086 554E4B4E 	unknownIns:		.STRING "UNKNOWN INSTRUCTION"
+  21      4F574E20 
+  21      494E5354 
+  21      52554354 
+  21      494F4E00 
+  22              	
+  23              	/*
+  24              		Opcode Strings for Branch / Branch and Link instructions...4 bytes each
+  25              	*/
+  26              	
+  27              	branchMnemonics:
+ARM GAS  JumpDecode.s 			page 2
+ARM Jump Decoding
+Data Section
+  28              	//			Null Terminate Label with Space (4 Bytes...HINT!)			
+  29 009a 45512000 				.STRING	"EQ "	// 0000		- Bit vales in CC field
+  30 009e 4E452000 				.STRING	"NE "	// 0001
+  31 00a2 43532000 				.STRING	"CS "	// 0010
+  32 00a6 43432000 				.STRING	"CC "	// 0011
+  33 00aa 4D492000 				.STRING	"MI "	// 0100
+  34 00ae 504C2000 				.STRING	"PL "	// 0101
+  35 00b2 56532000 				.STRING	"VS "	// 0110
+  36 00b6 56432000 				.STRING	"VC " 	// 0111
+  37 00ba 48492000 				.STRING	"HI "	// 1000
+  38 00be 4C532000 				.STRING	"LS "	// 1001
+  39 00c2 47452000 				.STRING	"GE "	// 1010
+  40 00c6 4C542000 				.STRING	"LT "	// 1011
+  41 00ca 47542000 				.STRING	"GT "	// 1100
+  42 00ce 4C452000 				.STRING	"LE "	// 1101
+  43 00d2 2000     				.STRING	" "	// 1110		// Just a Branch B / BL
+  44 00d4 78782000 				.STRING	"xx "	// 1111		// Reserved, never use
+  45              	
+  46              	/*
+  47              	shiftInSTRuctionCC	=28
+  48              	maskInSTRuctionCC	=0b1111
+  49              	
+  50              	shiftLinkFlag		=24
+  51              	
+  52              	shiftMajorOpcode	= 25
+  53              	maskMajorOpcode		= 0b0000111
+  54              	*/
+  55              								
+  56              	.EJECT			// Form feed / New Page
+ARM GAS  JumpDecode.s 			page 3
+ARM Jump Decoding
+The Code for the Program
+  57              	.SBTTL		"The Code for the Program"
+  58              	.TEXT
+  59              	.GLOBAL	main
+  60              	
+  61              	main:
+  62 0000 14D04DE2 		SUB		SP, SP, #20		// Save registers
+  63 0004 10708DE5 		STR		R7, [SP, #16]
+  64 0008 0C608DE5 		STR		R6, [SP, #12]
+  65 000c 08508DE5 		STR		R5, [SP, #8]
+  66 0010 04408DE5 		STR		R4, [SP, #4]
+  67 0014 00E08DE5 		STR		LR, [SP, #0]
+  68              	
+  69 0018 20019FE5 		LDR		R0, =courseSTR		/*Class Title*/ 
+  70 001c FEFFFFEB 		BL		puts
+  71              		
+  72 0020 1C019FE5 		LDR		R0, =pgmSTR		/*The Program Title*/ 
+  73 0024 FEFFFFEB 		BL		puts
+  74              		
+  75 0028 18019FE5 		LDR		R0, =titleSTR	// Column header
+  76 002c FEFFFFEB 		BL		puts
+  77              		
+  78 0030 14519FE5 		LDR		R5, =TestCodeToDecode
+  79 0034 14719FE5 		LDR		R7, =branchMnemonics	
+  80              		
+  81 0038 0040A0E3 		MOV		R4, #0			     // Loop Counter and Index
+  82              	LOOP:
+  83 003c 10019FE5 		LDR		R0, =printSTR
+  84 0040 041185E0 		ADD		R1, R5, R4, LSL#2    // Instruction address
+  85 0044 046195E7 		LDR		R6, [R5, R4, LSL#2]  // Load instruction
+  86 0048 0620A0E1 		MOV		R2, R6
+  87 004c FEFFFFEB 		BL		printf	
+  88              			
+  89 0050 0EC406E2 		AND		R12, R6, #0b111<<25	 // Branch opcode logic
+  90 0054 0A043CE3 		TEQ		R12, #0b101<<25
+  91 0058 0600001A 		BNE		notBranchInstruction
+  92 005c 4200A0E3 		MOV		R0, #'B'
+  93 0060 FEFFFFEB 		BL		putchar
+  94              		
+  95 0064 01C416E2 		ANDS	R12, R6, #0b1<<24    // Link logic
+  96 0068 0500000A 		BEQ		getConditionCode
+  97 006c 4C00A0E3 		MOV		R0, #'L'
+  98 0070 FEFFFFEB 		BL		putchar
+  99 0074 020000EA 		B		getConditionCode	
+ 100              		
+ 101              	notBranchInstruction:
+ 102 0078 D8009FE5 		LDR		R0, =unknownIns
+ 103 007c FEFFFFEB 		BL		printf
+ARM GAS  JumpDecode.s 			page 4
+ARM Jump Decoding
+The Code for the Program
+ 104 0080 080000EA 		B		LoopNext
+ 105              		
+ 106              	getConditionCode:
+ 107 0084 0F0206E2 		AND		R0, R6, #0b1111<<28  // Condition code logic
+ 108 0088 200EA0E1 		LSR		R0, R0, #28			
+ 109 008c 000187E0 		ADD		R0, R7, R0, LSL#2
+ 110 0090 FEFFFFEB 		BL		printf
+ 111              		
+ 112 0094 0614A0E1 		LSL		R1, R6, #8         // Offset logic
+ 113 0098 4113A0E1 		ASR		R1, R1, #(8-2)     // Combine align bits with encoding num instructions not bytes which needs
+ 114 009c 081081E2 		ADD		R1, R1, #8         // Prefetch instruction
+ 115 00a0 B4009FE5 		LDR		R0, =printBranchOff
+ 116 00a4 FEFFFFEB 		BL		printf		
+ 117              	
+ 118              	LoopNext:	
+ 119 00a8 0A00A0E3 		MOV		R0, #'\n'
+ 120 00ac FEFFFFEB 		BL		putchar
+ 121              	
+ 122 00b0 014084E2 		ADD		R4, R4, #1
+ 123 00b4 140054E3 		CMP		R4, #20		// Read 20 Instructions
+ 124 00b8 DFFFFFBA 		BLT		LOOP
+ 125              	
+ 126              	ProgramExit:	
+ 127 00bc 00E09DE5 		LDR		LR, [SP, #0]	// Restore registers
+ 128 00c0 04409DE5 		LDR		R4, [SP, #4]
+ 129 00c4 08509DE5 		LDR		R5, [SP, #8]
+ 130 00c8 0C609DE5 		LDR		R6, [SP, #12]
+ 131 00cc 10709DE5 		LDR		R7, [SP, #16]
+ 132 00d0 14D08DE2 		ADD		SP, SP, #20
+ 133              		
+ 134 00d4 0000A0E3 		MOV		R0,#0			// Return Code of 0	
+ 135 00d8 1EFF2FE1 		BX		LR
+ 136              	
+ 137              	
+ 138              	/*
+ 139              	This is random test code.  It has no functional meaning.  It is here
+ 140              	to create bits in memory for us to decode!
+ 141              	*/	
+ 142              	TestCodeToDecode:
+ 143 00dc 1100000A 		BEQ		T2
+ 144 00e0 FDFFFF1B 		BLNE	TestCodeToDecode
+ 145 00e4 FFFFFFFF 		.WORD	0xFFFFFFFF
+ 146 00e8 00000000 		.WORD	0X00000000
+ 147 00ec 0D00004A 		BMI		T2
+ 148 00f0 0210A0E1 		MOV		R1, R2
+ 149 00f4 0B00005B 		BLPL	T2
+ 150 00f8 0A00002A 		BCS		T2
+ARM GAS  JumpDecode.s 			page 5
+ARM Jump Decoding
+The Code for the Program
+ 151 00fc F6FFFF8B 		BLHI	TestCodeToDecode
+ 152 0100 0800009A 		BLS		T2
+ 153 0104 070000CB 		BLGT	T2
+ 154 0108 060000AA 		BGE		T2
+ 155 010c 41424344 		.ASCII	"ABCD"
+ 156 0110 0400003B 		BLCC	T2
+ 157 0114 0300006A 		BVS		T2
+ 158 0118 0200007B 		BLVC	T2
+ 159 011c 010000DA 		BLE		T2
+ 160 0120 000000EA 		B		T2
+ 161 0124 ECFFFFEB 		BL		TestCodeToDecode
+ 162              	T2:
+ 163 0128 C93315E0 		ANDS	R3, R5, R9, ASR	#7
+ 164 012c 070055E1 		CMP		R5, r7
+ 165 0130 190056E3 		CMP		R6, #25
+ 166              	
+ 167 0134 0D007BE1 		CMN		R11, R13
+ 168 0138 020087E0 		ADD		R0,R7,R2
+ 169 013c 0AB08CE1 		ORR		R11,R12,R10
+ 169      00000000 
+ 169      18000000 
+ 169      4F000000 
+ 169      DC000000 

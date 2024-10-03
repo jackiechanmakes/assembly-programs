@@ -7,17 +7,14 @@
 .TITLE		"ARM Jump Decoding"
 .SBTTL		"Data Section"	
 
-
 .DATA
 
 courseSTR:		.ASCIZ	"Jackie Chan\t\t\tCIST 039\n"
 pgmSTR:			.ASCIZ	"This program will decode a subset of ARM instructions\n"
 titleSTR:		.ASCIZ	"Address\t\tM Language\tInstruction"
 
-
 printSTR:		.ASCIZ	"0x%08X\t%08X\t"
 printBranchOff:	.STRING	"\t<%+d>"
-
 printSTRing:	.STRING	"%s"
 
 /* STRINGS for Opcode		*/
@@ -55,8 +52,6 @@ shiftLinkFlag		=24
 shiftMajorOpcode	= 25
 maskMajorOpcode		= 0b0000111
 */
-
-
 							
 .EJECT			// Form feed / New Page
 .SBTTL		"The Code for the Program"
@@ -64,8 +59,7 @@ maskMajorOpcode		= 0b0000111
 .GLOBAL	main
 
 main:
-	SUB		SP, SP, #24		// Save registers
-	STR		R8, [SP, #20]
+	SUB		SP, SP, #20		// Save registers
 	STR		R7, [SP, #16]
 	STR		R6, [SP, #12]
 	STR		R5, [SP, #8]
@@ -82,26 +76,26 @@ main:
 	BL		puts
 	
 	LDR		R5, =TestCodeToDecode
-	LDR		R8, =branchMnemonics	
+	LDR		R7, =branchMnemonics	
 	
-	MOV		R4, #0			// Loop Counter and Index
+	MOV		R4, #0			     // Loop Counter and Index
 LOOP:
 	LDR		R0, =printSTR
-	ADD		R12, R5, R4, LSL#2
-	MOV		R1, R12
-	LDR		R6, [R5, R4, LSL#2]  // instruction
+	ADD		R1, R5, R4, LSL#2    // Instruction address
+	LDR		R6, [R5, R4, LSL#2]  // Load instruction
 	MOV		R2, R6
 	BL		printf	
 		
-	AND		R7, R6, #0b111<<25	// branch opcode logic
-	TEQ		R7, #0b101<<25
+	AND		R12, R6, #0b111<<25	 // Branch opcode logic
+	TEQ		R12, #0b101<<25
 	BNE		notBranchInstruction
-	LDR		R0, =printSTRing
 	MOV		R0, #'B'
 	BL		putchar
 	
-	ANDS	R7, R6, #0b1<<24
-	BNE		linkInstruction
+	ANDS	R12, R6, #0b1<<24    // Link logic
+	BEQ		getConditionCode
+	MOV		R0, #'L'
+	BL		putchar
 	B		getConditionCode	
 	
 notBranchInstruction:
@@ -109,25 +103,16 @@ notBranchInstruction:
 	BL		printf
 	B		LoopNext
 	
-linkInstruction:
-	MOV		R0, #'L'
-	BL		putchar
-	
 getConditionCode:
-	AND		R12, R6, #0b1111<<28		// condition code logic
-	LSR		R12, R12, #28
-	ADD		R12, R8, R12, LSL#2
-	MOV		R0, R12
-	//LDR		R0, =printSTR   // help debug 
-	//MOV		R1, R12
+	AND		R0, R6, #0b1111<<28  // Condition code logic
+	LSR		R0, R0, #28			
+	ADD		R0, R7, R0, LSL#2
 	BL		printf
 	
-	LSL		R12, R6, #8  // offset logic
-	ASR		R12, R12, #8
-	LSL		R12, R12, #2
-	ADD		R12, R12, #8
+	LSL		R1, R6, #8         // Offset logic
+	ASR		R1, R1, #(8-2)     // Combine align bits with encoding num instructions not bytes which needs LSL#2 
+	ADD		R1, R1, #8         // Prefetch instruction
 	LDR		R0, =printBranchOff
-	MOV		R1, R12
 	BL		printf		
 
 LoopNext:	
@@ -144,8 +129,7 @@ ProgramExit:
 	LDR		R5, [SP, #8]
 	LDR		R6, [SP, #12]
 	LDR		R7, [SP, #16]
-	LDR		R7, [SP, #20]
-	ADD		SP, SP, #24
+	ADD		SP, SP, #20
 	
 	MOV		R0,#0			// Return Code of 0	
 	BX		LR
